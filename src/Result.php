@@ -1,5 +1,6 @@
 <?php namespace Marcelgwerder\ApiHandler;
 
+use Illuminate\Support\Facades\Response;
 use \BadMethodCallException;
 use \Exception;
 
@@ -13,23 +14,14 @@ class Result
 	protected $parser;
 
 	/**
-	 * Response instance
-	 * 
-	 * @var mixed
-	 */
-	protected $response;
-
-	/**
 	 * Create a new result
 	 *
 	 * @param  Marcelgwerder\ApiHandler\Parser $parse
-	 * @param  Response                        $response
 	 * @return void
 	 */
-	public function __construct(Parser $parser, $response)
+	public function __construct(Parser $parser)
 	{
 		$this->parser = $parser;
-		$this->response = $response;
 	}
 
 	/**
@@ -43,20 +35,20 @@ class Result
 
 		if($this->parser->mode == 'count')
 		{
-			return $this->response->json($headers, 200, $headers);
+			return Response::json($headers, 200, $headers);
 		}
 		else 
 		{
 			if($this->parser->envelope) 
 			{
-				return $this->response->json(array(
+				return Response::json([
 					'meta' => $headers,
 					'data' => $this->getResult()
-				), 200);
+				], 200);
 			} 
 			else 
 			{
-				return $this->response->json($this->getResult(), 200, $headers);
+				return Response::json($this->getResult(), 200, $headers);
 			}
 			
 		}
@@ -99,7 +91,7 @@ class Result
 	public function getHeaders()
 	{
 		$meta = $this->parser->meta;
-		$headers = array();
+		$headers = [];
 
 		foreach($meta as $provider)
 		{

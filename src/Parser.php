@@ -5,6 +5,7 @@ use \Illuminate\Database\Eloquent\Relations\BelongsTo;
 use \Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use \Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use \Illuminate\Database\Query\Builder as QueryBuilder;
+use \Illuminate\Support\Facades\Config;
 use \ArrayObject;
 use \InvalidArgumentException;
 use \BadMethodCallException;
@@ -31,7 +32,7 @@ class Parser
 	 *
 	 * @var array
 	 */
-	public $meta = array();
+	public $meta = [];
 
 	/**
 	 * If the parser works on multiple datasets
@@ -80,7 +81,7 @@ class Parser
 	 *
 	 * @var array
 	 */
-	protected $functions = array('fields', 'sort', 'limit', 'offset','config', 'with', 'q');
+	protected $functions = ['fields', 'sort', 'limit', 'offset','config', 'with', 'q'];
 
 	/**
 	 * All functional params
@@ -92,14 +93,14 @@ class Parser
 	 *
 	 * @var array
 	 */
-	protected $additionalFields = array();
+	protected $additionalFields = [];
 
 	/**
 	 * All sorts that belong to a relation
 	 *
 	 * @var array
 	 */
-	protected $additionalSorts = array();
+	protected $additionalSorts = [];
 
 	/**
 	 * If builder is an eloquent builder or not
@@ -121,14 +122,13 @@ class Parser
 	 * @param mixed $builder
 	 * @param array $params
 	 */
-	public function __construct($builder, $params, $config)
+	public function __construct($builder, $params)
 	{
 		$this->builder = $builder;
 		$this->params = $params;
-		$this->config = $config;
 
-		$this->prefix = $this->config->get('laravel-api-handler::prefix');
-		$this->envelope = $this->config->get('laravel-api-handler::envelope');
+		$this->prefix = Config::get('apihandler.prefix');
+		$this->envelope = Config::get('apihandler.envelope');
 
 		$isEloquentModel =  is_subclass_of($builder, '\Illuminate\Database\Eloquent\Model');
 		$isEloquentRelation = is_subclass_of($builder, '\Illuminate\Database\Eloquent\Relations\Relation');
@@ -317,7 +317,7 @@ class Parser
 	 */
 	protected function parseFields($fieldsParam)
 	{
-		$fields = array();
+		$fields = [];
 
 		foreach(explode(',', $fieldsParam) as $field)
 		{
@@ -337,8 +337,10 @@ class Parser
 			$this->query->addSelect($fields);
 		}
 
-		//Remove * if is set in fields
-		$this->query->columns = array_diff($this->query->columns, array('*'));
+		if(is_array($this->query->columns)) 
+		{
+			$this->query->columns = array_diff($this->query->columns, ['*']);
+		}
 	}
 
 	/**
@@ -353,7 +355,7 @@ class Parser
 		$fieldsCount = count($fields);
 		$baseModel = $this->builder->getModel();
 
-		$withHistory = array();
+		$withHistory = [];
 
 		foreach(explode(',', $withParam) as $with)
 		{
@@ -375,7 +377,7 @@ class Parser
 				//Create new history element
 				if(!isset($withHistory[$currentHistoryPath]))
 				{
-					$withHistory[$currentHistoryPath] = array('fields' => array());
+					$withHistory[$currentHistoryPath] = ['fields' => []];
 				}
 
 				//Get all given fields related to the current part
@@ -398,10 +400,10 @@ class Parser
 				//Throw a new ApiHandlerException if the relation doesn't exist
 				//or is not properly marked as a relation
 				if(!$this->isRelation($previousModel, $part)) {
-					throw new ApiHandlerException('UnknownResourceRelation', array('relation' => $part));
+					throw new ApiHandlerException('UnknownResourceRelation', ['relation' => $part]);
 				}
 
-				$relation = call_user_func(array($previousModel, $part));
+				$relation = call_user_func([$previousModel, $part]);
 				$model = $relation->getModel();
 				$relationType = $this->getRelationType($relation);
 
@@ -457,7 +459,7 @@ class Parser
 		}
 
 		//Apply the withHistory to using the laravel "with" function
-		$withsArr = array();
+		$withsArr = [];
 
 		foreach($withHistory as $withHistoryKey => $withHistoryValue)
 		{
@@ -479,9 +481,9 @@ class Parser
 				foreach($withHistory[$withHistoryKey]['sorts'] as $pair) 
 				{
 					$pos = strpos($pair[0], '.');
-					$pair = $pos !== false ? array(substr($pair[0], $pos+1), $pair[1]) : $pair;
+					$pair = $pos !== false ? [substr($pair[0], $pos+1), $pair[1]] : $pair;
 
-					call_user_func_array(array($query, 'orderBy'), $pair);
+					call_user_func_array([$query, 'orderBy'], $pair);
 				}		
 			};
 		}
@@ -491,7 +493,7 @@ class Parser
 		//Merge the base fields
 		if(count($fields) > 0)
 		{
-			if(!is_array($this->query->columns)) $this->query->columns = array();
+			if(!is_array($this->query->columns)) $this->query->columns = [];
 			$this->query->columns = array_merge($this->query->columns, $fields);
 		}
 	}
@@ -517,12 +519,12 @@ class Parser
 				$direction = 'asc';
 			}
 
-			$pair = array(preg_replace('/^-/', '', $sortElem), $direction);
+			$pair = [preg_replace('/^-/', '', $sortElem), $direction];
 
 			//Only add the sorts that are on the base resource
 			if(strpos($sortElem, '.') === false) 
 			{
-				call_user_func_array(array($this->query, 'orderBy'), $pair);
+				call_user_func_array([$this->query, 'orderBy'], $pair);
 			}
 			else
 			{
@@ -539,7 +541,7 @@ class Parser
 	 */
 	protected function parseFilter($filterParams) 
 	{
-		$supportedPostfixes = array(
+		$supportedPostfixes = [
 			'st' => '<', 
 			'gt' => '>', 
 			'min' => '>=', 
@@ -547,14 +549,14 @@ class Parser
 			'lk' => 'LIKE',
 			'not-lk' => 'NOT LIKE',
 			'not' => '!=',
-		);
+		];
 		
 		$supportedPrefixesStr = implode('|', $supportedPostfixes);
 		$supportedPostfixesStr = implode('|', array_keys($supportedPostfixes));
 
 		foreach($filterParams as $filterParamKey => $filterParamValue) 
 		{
-			$keyMatches = array();
+			$keyMatches = [];
 			
 			//Matches every parameter with an optional prefix and/or postfix
 			//e.g. not-title-lk, title-lk, not-title, title 
@@ -623,7 +625,7 @@ class Parser
 			return;
 		}
 
-		$fulltextType = $this->config->get('laravel-api-handler::fulltext');
+		$fulltextType = Config::get('apihandler.fulltext');
 
 		if($fulltextType == 'native') 
 		{
@@ -641,7 +643,7 @@ class Parser
 			}
 
 			//Add the score column
-			$scoreColumn = $this->config->get('laravel-api-handler::fulltext_score_column');
+			$scoreColumn = Config::get('apihandler.fulltext_score_column');
 			$this->query->addSelect($this->query->raw('MATCH('.implode(',', $fullTextSearchColumns).') AGAINST("'.$qParam.'" IN BOOLEAN MODE) as `'.$scoreColumn.'`'));
 		}
 		else 

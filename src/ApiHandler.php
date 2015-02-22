@@ -6,34 +6,6 @@ use Illuminate\Support\Facades\Response;
 class ApiHandler 
 {
 	/**
-	 * Config instance.
-	 *
-	 * @var Config
-	 */
-	protected $config;
-
-	/**
-	 * Response instance
-	 * 
-	 * @var Response
-	 */
-	protected $response;
-
-	/**
-	 * Request instance
-	 * 
-	 * @var Request
-	 */
-	protected $request;
-
-	/**
-	 * Input instance
-	 * 
-	 * @var Input
-	 */
-	protected $input;
-
-	/**
 	 * Return a new Result object for a single dataset
 	 * 
 	 * @param  mixed                           $queryBuilder   Some kind of query builder instance 
@@ -43,12 +15,12 @@ class ApiHandler
 	 */
 	public function parseSingle($queryBuilder, $identification, $queryParams = false)
 	{
-		if($queryParams === false) $queryParams = $this->input->get();
+		if($queryParams === false) $queryParams = Input::get();
 
-		$parser = new Parser($queryBuilder, $queryParams, $this->config);
+		$parser = new Parser($queryBuilder, $queryParams);
 		$parser->parse($identification);
 
-		return new Result($parser, $this->response);
+		return new Result($parser);
 	}
 
 	/**
@@ -61,12 +33,12 @@ class ApiHandler
 	 */
 	public function parseMultiple($queryBuilder, $fullTextSearchColumns = array(), $queryParams = false)
 	{
-		if($queryParams === false) $queryParams = $this->input->get();
+		if($queryParams === false) $queryParams = Input::get();
 
-		$parser = new Parser($queryBuilder, $queryParams, $this->config);
+		$parser = new Parser($queryBuilder, $queryParams);
 		$parser->parse($fullTextSearchColumns, true);
 
-		return new Result($parser, $this->response);
+		return new Result($parser);
 	}
 
 	/**
@@ -77,7 +49,7 @@ class ApiHandler
 	 */
 	public function created($object) 
 	{
-		return $this->response->json($object, 201);
+		return Response::json($object, 201);
 	}
 
 	/**
@@ -90,11 +62,11 @@ class ApiHandler
 	{
 		if($object != null)  
 		{
-			return $this->response->json($object, 200);
+			return Response::json($object, 200);
 		}
 		else 
 		{
-			return $this->response->make(null, 204);
+			return Response::make(null, 204);
 		}
 	}
 
@@ -107,51 +79,11 @@ class ApiHandler
 	public function deleted($object = null) {
 		if($object != null)  
 		{
-			return $this->response->json($object, 200);
+			return Response::json($object, 200);
 		}
 		else 
 		{
-			return $this->response->make(null, 204);
+			return Response::make(null, 204);
 		}
-	}
-
-	/**
-	 * Set the input handler
-	 * 
-	 * @param Input $input
-	 */
-	public function setInputHandler($input)
-	{
-		$this->input = $input;
-	}
-
-	/**
-	 * Set the config handler
-	 * 
-	 * @param Config $config
-	 */
-	public function setConfigHandler($config)
-	{
-		$this->config = $config;
-	}
-
-	/**
-	 * Set the response handler
-	 * 
-	 * @param Response $response
-	 */
-	public function setResponseHandler($response)
-	{
-		$this->response = $response;
-	}
-
-	/**
-	 * Set the current request
-	 * 
-	 * @param Request $request 
-	 */
-	public function setRequest($request) 
-	{
-		$this->request = $request;
 	}
 }
