@@ -391,7 +391,10 @@ class Parser
                     $firstKey = $relation->getQualifiedParentKeyName();
                     $secondKey = $relation->getRelated()->getQualifiedKeyName();
                 } else if ($relationType === 'HasManyThrough') {
-                    if (method_exists($relation, 'getExistenceCompareKey')) {
+                    if (method_exists($relation, 'getQualifiedLocalKeyName')) {
+                        $firstKey = $relation->getQualifiedLocalKeyName();
+                    } else if (method_exists($relation, 'getExistenceCompareKey')) {
+                        // compatibility for laravel 5.4
                         $firstKey = $relation->getExistenceCompareKey();
                     } else {
                         // compatibility for laravel < 5.4
@@ -649,9 +652,9 @@ class Parser
                 }
             } else if ($cat == 'meta') {
                 if ($option == 'total-count') {
-                    $this->meta[] = new CountMetaProvider('Meta-Total-Count', $this->originalBuilder);
+                    $this->meta[] = new CountMetaProvider('Meta-Total-Count', $this->originalQuery);
                 } else if ($option == 'filter-count') {
-                    $this->meta[] = new CountMetaProvider('Meta-Filter-Count', $this->builder);
+                    $this->meta[] = new CountMetaProvider('Meta-Filter-Count', $this->query);
                 }
             } else if ($cat == 'response') {
                 if ($option == 'envelope') {
